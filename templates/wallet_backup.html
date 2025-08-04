@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BITPenny Wallet</title>
+    <style>
+        body {
+            background-color: #0d0d0d;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: #1a1a1a;
+            padding: 10px 20px;
+            border-bottom: 1px solid #333;
+        }
+        header img {
+            height: 50px;
+        }
+        .auth-links {
+            text-align: right;
+        }
+        .auth-links a {
+            color: #00ff99;
+            text-decoration: none;
+            margin-left: 15px;
+        }
+        .auth-links span {
+            color: #aaa;
+            margin-left: 10px;
+        }
+        .content {
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='images/bitpenny-logo.png') }}" alt="BITPenny Logo">
+        <div class="auth-links">
+            {% if session.get('google_id') %}
+                <span>Welcome, {{ name }}</span>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login with Google</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="content">
+        <h1>Welcome to BITPenny Wallet</h1>
+        <p>Your secure crypto exchange platform</p>
+        <!-- Add more wallet functionality here -->
+    </div>
+</body>
+</html>
