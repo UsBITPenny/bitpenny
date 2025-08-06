@@ -1,28 +1,14 @@
 import os
-from dotenv import load_dotenv
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+from flask import Flask, jsonify, render_template
 from flask_cors import CORS
-import json
-import hashlib
-import time
-import requests
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Get secrets from environment variables
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-SECRET_KEY = os.getenv("SECRET_KEY")
-
+# === Flask App Setup ===
 app = Flask(__name__)
-CORS(app)  # Allow frontend JS to access the API
-app.secret_key = SECRET_KEY  # use secret key from env
+CORS(app)
 
-# Example wallet address (replace with real one later)
+# === Simulated Blockchain / Exchange Data ===
 wallet_address = "BITP123456789EXAMPLE"
 
-# Dummy blockchain data (simulate transactions)
 blockchain = [
     {
         "sender": "network",
@@ -38,7 +24,7 @@ blockchain = [
     }
 ]
 
-# --- Helper functions ---
+# === Helper Functions ===
 def calculate_balance(address):
     total = 0
     for tx in blockchain:
@@ -54,32 +40,36 @@ def get_transactions_for_wallet(address):
         if tx["sender"] == address or tx["recipient"] == address
     ]
 
-# Homepage route (optional: load dashboard directly)
+# === Routes ===
+
+# Serve the exchange dashboard
 @app.route('/')
 def index():
-    return render_template("wallet.html")  # Make sure templates/wallet.html exists
+    return render_template("wallet.html")  # Must be in templates/wallet.html
 
-# Wallet route - returns current wallet address
+# Return wallet address
 @app.route('/wallet', methods=['GET'])
 def get_wallet():
     return jsonify({'address': wallet_address}), 200
 
-# Balance route - returns total balance for address
+# Return balance for given address
 @app.route('/balance/<address>', methods=['GET'])
 def get_balance(address):
     balance = calculate_balance(address)
     return jsonify({'balance': balance}), 200
 
-# Transactions route - returns all transactions for address
+# Return all transactions for a wallet
 @app.route('/transactions/<address>', methods=['GET'])
 def get_transactions(address):
     txs = get_transactions_for_wallet(address)
     return jsonify({'transactions': txs}), 200
 
-# Example route: get blockchain (optional)
+# Optional: return the blockchain itself
 @app.route('/chain', methods=['GET'])
 def get_chain():
     return jsonify({'chain': blockchain, 'length': len(blockchain)})
 
+# === Run Server ===
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Ensures it works locally and on Render
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)

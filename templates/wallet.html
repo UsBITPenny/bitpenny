@@ -1,122 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>BITPenny Wallet Dashboard</title>
-<style>
-  :root {
-    --button-bg-color: #2a2a2a;
-    --button-text-color: #00ff00;
-    --button-hover-bg: #005500;
-    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  }
-  body {
-    background-color: #121212;
-    color: var(--button-text-color);
-    font-family: var(--font-family);
-    margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-  }
-  .dashboard-container {
-    max-width: 600px;
-    width: 100%;
-    padding: 20px;
-  }
-  h1 {
-    text-align: center;
-    margin-bottom: 10px;
-  }
-  .wallet-info {
-    text-align: center;
-    margin-bottom: 30px;
-    font-size: 1.1em;
-  }
-  .dashboard-buttons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 15px;
-  }
-  .dashboard-buttons button {
-    background-color: var(--button-bg-color);
-    color: var(--button-text-color);
-    font-family: var(--font-family);
-    font-size: 1.1em;
-    padding: 15px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-  }
-  .dashboard-buttons button:hover {
-    background-color: var(--button-hover-bg);
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BITPenny Exchange</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-<body>
-  <div class="dashboard-container">
-    <h1>BITPenny Wallet Dashboard</h1>
-    <div class="wallet-info">
-      <div><strong>Wallet:</strong> <span id="walletAddress">Loading...</span></div>
-      <div><strong>Balance:</strong> <span id="walletBalance">Loading...</span> BITP</div>
-    </div>
-    <div class="dashboard-buttons">
-      <button onclick="goToWallet()">Wallet</button>
-      <button onclick="goToSend()">Send</button>
-      <button onclick="goToReceive()">Receive</button>
-      <button onclick="goToTransactions()">Transactions</button>
-      <button onclick="startMining()">Mine</button>
-      <button onclick="goToSettings()">Settings</button>
+<body class="dark">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">💹 BITPenny</div>
+    <div class="actions">
+      <div class="price">1 BITP = $<span id="bitpPrice">0.01</span></div>
+      <div class="profile" id="profile">
+        <span id="userEmail">Guest</span> ▼
+        <div class="dropdown" id="profileDropdown">
+          <button onclick="loginPrompt()">Sign In</button>
+          <button onclick="logout()">Logout</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <script>
-    // Load wallet address and balance from Flask backend
-    async function loadWallet() {
-      try {
-        const walletRes = await fetch('/wallet');
-        const walletData = await walletRes.json();
-        const address = walletData.address;
-        document.getElementById('walletAddress').textContent = address;
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <ul>
+      <li class="active">Dashboard</li>
+      <li>Markets</li>
+      <li>Trade</li>
+      <li>Wallets</li>
+      <li>History</li>
+      <li>AI Assistant 🤖</li>
+      <li>Settings</li>
+      <li>Support</li>
+    </ul>
+  </div>
 
-        const balanceRes = await fetch(`/balance/${address}`);
-        const balanceData = await balanceRes.json();
-        document.getElementById('walletBalance').textContent = balanceData.balance.toLocaleString();
-      } catch (err) {
-        console.error('Failed to load wallet:', err);
-        document.getElementById('walletAddress').textContent = 'Error';
-        document.getElementById('walletBalance').textContent = 'Error';
-      }
-    }
+  <!-- Main Content -->
+  <div class="main">
+    <!-- Balance Panel -->
+    <section>
+      <h2>💰 Wallet Balance</h2>
+      <p>USD: $<span id="usdBalance">0.00</span></p>
+      <p>BITP: <span id="bitpBalance">0.0000</span></p>
+      <p>Exchange Fee Revenue: $<span id="exchangeRevenue">0.00</span></p>
+    </section>
 
-    function goToWallet() {
-      alert("This is the wallet page.");
-    }
+    <!-- Trade Panel -->
+    <section>
+      <h2>📈 Trade BITP</h2>
+      <input type="number" id="tradeAmount" placeholder="Amount in USD">
+      <button onclick="buy()">Buy BITP</button>
+      <button onclick="sell()">Sell BITP</button>
+      <div id="tradeLog" class="green"></div>
+    </section>
 
-    function goToSend() {
-      window.location.href = '/send';
-    }
+    <!-- Deposit Panel -->
+    <section>
+      <h2>🏦 Deposit USD</h2>
+      <input type="number" id="depositAmount" placeholder="Enter amount to deposit">
+      <button onclick="deposit()">Deposit</button>
+      <div id="depositLog" class="green"></div>
+    </section>
+  </div>
 
-    function goToReceive() {
-      alert("Receive address: " + document.getElementById('walletAddress').textContent);
-    }
-
-    function goToTransactions() {
-      const address = document.getElementById('walletAddress').textContent;
-      window.location.href = `/transactions/${address}`;
-    }
-
-    function startMining() {
-      alert("Mining started! Connect this to your mining API.");
-    }
-
-    function goToSettings() {
-      window.location.href = '/settings';
-    }
-
-    loadWallet();  // Load on page load
-  </script>
+  <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>
