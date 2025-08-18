@@ -1,60 +1,94 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>BITPenny Exchange</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='bitp-logo.png') }}">
-    <style>
-        body {
-            background-color: #0d0d0d;
-            color: #e0ffe0;
-            font-family: 'Segoe UI', sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 0;
-        }
-        .logo {
-            margin-top: 60px;
-        }
-        .logo img {
-            width: 160px;
-            filter: drop-shadow(0 0 10px #00ff99);
-        }
-        h1 {
-            margin-top: 20px;
-            font-size: 3em;
-            color: #00ff99;
-            text-shadow: 0 0 10px #00ff99;
-        }
-        .btn {
-            margin-top: 40px;
-            padding: 15px 30px;
-            font-size: 1.2em;
-            border: none;
-            border-radius: 8px;
-            background-color: #00ff99;
-            color: #000;
-            cursor: pointer;
-            box-shadow: 0 0 12px #00ff99;
-            transition: 0.3s;
-        }
-        .btn:hover {
-            background-color: #00cc77;
-            box-shadow: 0 0 20px #00ff99;
-        }
-    </style>
-</head>
-<body>
-    <div class="logo">
-        <img src="{{ url_for('static', filename='bitp-logo.png') }}" alt="BITPenny Logo">
-    </div>
-    <h1>Welcome to BITPenny</h1>
+{% extends "base.html" %}
 
-    {% if logged_in %}
-        <p>Hello, {{ name }}!</p>
-        <a href="/wallet" class="btn">Go to Wallet</a>
-    {% else %}
-        <a href="/login" class="btn">Sign in with Google</a>
-    {% endif %}
-</body>
-</html>
+{% block content %}
+<div style="display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:stretch">
+  <section class="card" style="padding:22px 22px 18px">
+    <h1 style="margin:0 0 12px 0;font-size:32px;line-height:1.2;letter-spacing:.2px">
+      Trade crypto with a clean, fast UI.
+    </h1>
+    <p class="muted" style="margin:0 0 18px 0">
+      Buy BITP with card, track your balance, and explore live prices — all in one minimal app.
+    </p>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 14px">
+      <a href="/auth/google" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none">
+        <button style="display:inline-flex;align-items:center;gap:8px">
+          <span style="font-weight:600">Sign in with Google</span>
+        </button>
+      </a>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 16px">
+      <input id="emailDemo" placeholder="Email" style="max-width:280px">
+      <input id="pwDemo" type="password" placeholder="Password" style="max-width:260px">
+      <button id="btnSignup">Sign up</button>
+      <button id="btnLogin" style="background:#00e68c">Log in</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">
+      <div class="card" style="padding:12px">
+        <div class="muted" style="font-size:12px">Fees</div>
+        <div style="font-weight:700;margin-top:6px">0.5% / trade</div>
+      </div>
+      <div class="card" style="padding:12px">
+        <div class="muted" style="font-size:12px">Deposit</div>
+        <div style="font-weight:700;margin-top:6px">Card via Stripe</div>
+      </div>
+      <div class="card" style="padding:12px">
+        <div class="muted" style="font-size:12px">Security</div>
+        <div style="font-weight:700;margin-top:6px">2FA + OAuth</div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <a href="/wallet" style="text-decoration:none">
+        <button>Go to Wallet</button>
+      </a>
+    </div>
+  </section>
+
+  <section class="card" style="padding:18px">
+    <h3 style="margin:0 0 10px 0">Live BITP price</h3>
+    <div id="chart" style="height:360px;border-radius:12px;overflow:hidden"></div>
+    <div class="muted" id="lastPrice" style="margin-top:10px">Loading…</div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+  // tiny sparkline sim (dev only)
+  const el = document.getElementById('chart');
+  const chart = LightweightCharts.createChart(el,{layout:{background:{type:'solid',color:'#111716'},textColor:'#8fbfa6'},grid:{vertLines:{color:'#18231f'},horzLines:{color:'#18231f'}},crosshair:{mode:0},timeScale:{visible:false}});
+  const series = chart.addLineSeries({color:'#00ff99', lineWidth:2});
+  let t = Date.now()/1000, p = 100;
+  function tick(){
+    p += (Math.random()-0.5)*2.5;
+    t += 60;
+    series.update({time:t, value:Math.max(50, p)});
+    document.getElementById('lastPrice').textContent = 'Last: $' + Math.abs(p).toFixed(2);
+  }
+  let seed = [];
+  for(let i=120;i>0;i--){ p += (Math.random()-0.5)*2; seed.push({time: t-(120-i)*60, value:Math.max(50, p)}); }
+  series.setData(seed);
+  setInterval(tick, 800);
+
+  // demo email/password buttons
+  async function postJSON(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});return r.json();}
+  document.getElementById('btnSignup').onclick = async ()=>{
+    const email = document.getElementById('emailDemo').value.trim().toLowerCase();
+    const password = document.getElementById('pwDemo').value;
+    if(!email||!password) return alert('Enter email & password');
+    const res = await postJSON('/auth/signup',{email,password});
+    if(res.ok) location.href='/wallet'; else alert(res.error||'Sign up failed');
+  };
+  document.getElementById('btnLogin').onclick = async ()=>{
+    const email = document.getElementById('emailDemo').value.trim().toLowerCase();
+    const password = document.getElementById('pwDemo').value;
+    if(!email||!password) return alert('Enter email & password');
+    const res = await postJSON('/auth/login',{email,password});
+    if(res.ok) location.href='/wallet'; else alert(res.error||'Log in failed');
+  };
+</script>
+{% endblock %}

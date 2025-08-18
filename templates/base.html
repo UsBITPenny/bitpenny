@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>BITPenny</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --bg:#0b0f0d; --card:#111716; --line:#18231f; --txt:#e9ffee; --muted:#8fbfa6; --acc:#00ff99; --err:#ff6b6b; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:Segoe UI,system-ui,Arial,sans-serif}
+    header{position:sticky;top:0;z-index:10;backdrop-filter:saturate(120%) blur(4px);background:rgba(10,12,11,.7);border-bottom:1px solid var(--line)}
+    .nav{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:12px 18px}
+    .brand{display:flex;gap:10px;align-items:center}
+    .dot{width:14px;height:14px;border-radius:50%;background:var(--acc);box-shadow:0 0 20px var(--acc)}
+    .brand span{font-weight:700;letter-spacing:.2px}
+    .links a{color:var(--muted);text-decoration:none;margin-left:18px}
+    .links a:hover{color:var(--acc)}
+    main{max-width:1200px;margin:24px auto;padding:0 18px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+    .muted{color:var(--muted)}
+    footer{max-width:1200px;margin:40px auto 24px;padding:0 18px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;opacity:.9}
+    button{background:var(--acc);color:#002e1e;border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    input{background:#0e1413;color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:10px 12px;outline:none;width:100%}
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <div class="nav">
+      <div class="brand">
+        <div class="dot"></div>
+        <span>BITPenny</span>
+      </div>
+      <div class="links">
+        <a href="/">Home</a>
+        <a href="/trade">Trade</a>
+        <a href="/history">History</a>
+        <a href="/wallet">Wallet</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    <div>© {{ (datetime.utcnow().year if datetime is defined) or year or 2025 }} BITPenny</div>
+    <div>Demo for development — real payments via Stripe only.</div>
+  </footer>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>
