@@ -1,78 +1,92 @@
 // ==== BITPenny Exchange Simulation ====
+(function () {
+  let usdBalance = 0;
+  let bitpBalance = 0;
+  let bitpPrice = 0.01; // start at 1 cent
+  const feeRate = 0.005; // 0.5%
+  let exchangeRevenue = 0;
 
-let usdBalance = 0;
-let bitpBalance = 0;
-let bitpPrice = 0.01; // Start at 1 cent
-let feeRate = 0.005; // 0.5% fee
-let exchangeRevenue = 0; // Tracks all collected fees
+  // Cache DOM after DOMContentLoaded if this file were in <head>.
+  // In our template we load it at the end, so DOM is ready.
+  const $ = (id) => document.getElementById(id);
+  const usdEl = $("usdBalance");
+  const bitpEl = $("bitpBalance");
+  const priceEl = $("bitpPrice");
+  const logEl = $("log");
+  const depLogEl = $("depositLog");
 
-// DOM elements
-const usdEl = document.getElementById("usdBalance");
-const bitpEl = document.getElementById("bitpBalance");
-const priceEl = document.getElementById("bitpPrice");
-const logEl = document.getElementById("log");
+  function fmtUSD(v) {
+    return Number(v).toFixed(2);
+  }
+  function fmtBITP(v) {
+    return Number(v).toFixed(4);
+  }
 
-// Update the displayed balances and price
-function updateDisplay(message = "") {
-  usdEl.textContent = usdBalance.toFixed(2);
-  bitpEl.textContent = bitpBalance.toFixed(2);
-  priceEl.textContent = bitpPrice.toFixed(4);
-  if (message) logEl.textContent = message;
-}
+  function updateDisplay(message = "") {
+    usdEl.textContent = fmtUSD(usdBalance);
+    bitpEl.textContent = fmtBITP(bitpBalance);
+    priceEl.textContent = fmtUSD(bitpPrice);
+    if (message) {
+      logEl.textContent = message;
+    }
+    $("exchangeRevenue").textContent = fmtUSD(exchangeRevenue);
+  }
 
-// Deposit funds (simulated)
-function deposit() {
-  const amount = parseFloat(document.getElementById("depositAmount").value);
-  if (!amount || amount <= 0) return updateDisplay("⚠️ Invalid deposit amount.");
-  
-  usdBalance += amount;
-  updateDisplay(`✅ Deposited $${amount.toFixed(2)} USD`);
-}
+  function deposit() {
+    const amount = parseFloat($("depositAmount").value);
+    if (!amount || amount <= 0) {
+      depLogEl.textContent = "⚠️ Enter a positive number.";
+      return;
+    }
+    usdBalance += amount;
+    depLogEl.textContent = `✅ Deposited $${fmtUSD(amount)}.`;
+    updateDisplay();
+  }
 
-// Buy BITP with USD
-function buy() {
-  const amountUSD = parseFloat(document.getElementById("tradeAmount").value);
-  if (!amountUSD || amountUSD <= 0) return updateDisplay("⚠️ Enter a valid USD amount to buy.");
-  if (amountUSD > usdBalance) return updateDisplay("❌ Insufficient USD balance.");
+  function buy() {
+    const amountUSD = parseFloat($("tradeAmount").value);
+    if (!amountUSD || amountUSD <= 0) return updateDisplay("⚠️ Enter a valid USD amount to buy.");
+    if (amountUSD > usdBalance) return updateDisplay("❌ Insufficient USD balance.");
 
-  // Calculate fee and net purchase
-  const fee = amountUSD * feeRate;
-  const netUSD = amountUSD - fee;
-  const bitpBought = netUSD / bitpPrice;
+    const fee = amountUSD * feeRate;
+    const netUSD = amountUSD - fee;
+    const bitpBought = netUSD / bitpPrice;
 
-  // Update balances
-  usdBalance -= amountUSD;
-  bitpBalance += bitpBought;
-  exchangeRevenue += fee;
+    usdBalance -= amountUSD;
+    bitpBalance += bitpBought;
+    exchangeRevenue += fee;
 
-  // Simulate price increase (basic market impact)
-  bitpPrice *= 1 + (bitpBought / 10000); // more buys → price rises
+    // Simple market impact up when buying
+    bitpPrice *= (1 + Math.min(0.05, bitpBought * 0.0001));
 
-  updateDisplay(`✅ Bought ${bitpBought.toFixed(4)} BITP for $${amountUSD.toFixed(2)} (Fee: $${fee.toFixed(2)})`);
-}
+    updateDisplay(`✅ Bought ${fmtBITP(bitpBought)} BITP for $${fmtUSD(amountUSD)} (fee $${fmtUSD(fee)}).`);
+  }
 
-// Sell BITP for USD
-function sell() {
-  const amountUSD = parseFloat(document.getElementById("tradeAmount").value);
-  if (!amountUSD || amountUSD <= 0) return updateDisplay("⚠️ Enter a valid USD amount to sell.");
+  function sell() {
+    const amountUSD = parseFloat($("tradeAmount").value);
+    if (!amountUSD || amountUSD <= 0) return updateDisplay("⚠️ Enter a valid USD amount to sell.");
 
-  const bitpToSell = amountUSD / bitpPrice;
-  if (bitpToSell > bitpBalance) return updateDisplay("❌ Insufficient BITP balance.");
+    const fee = amountUSD * feeRate;
+    const netUSD = amountUSD - fee;
+    const bitpToSell = netUSD / bitpPrice;
 
-  // Calculate fee and net sale
-  const fee = amountUSD * feeRate;
-  const netUSD = amountUSD - fee;
+    if (bitpToSell > bitpBalance) return updateDisplay("❌ Insufficient BITP balance.");
 
-  // Update balances
-  bitpBalance -= bitpToSell;
-  usdBalance += netUSD;
-  exchangeRevenue += fee;
+    bitpBalance -= bitpToSell;
+    usdBalance += amountUSD;
+    exchangeRevenue += fee;
 
-  // Simulate price drop (basic market impact)
-  bitpPrice *= 1 - (bitpToSell / 10000); // more sells → price drops
+    // Simple market impact down when selling
+    bitpPrice *= (1 - Math.min(0.05, bitpToSell * 0.0001));
 
-  updateDisplay(`✅ Sold ${bitpToSell.toFixed(4)} BITP for $${netUSD.toFixed(2)} (Fee: $${fee.toFixed(2)})`);
-}
+    updateDisplay(`✅ Sold ${fmtBITP(bitpToSell)} BITP for $${fmtUSD(amountUSD)} (fee $${fmtUSD(fee)}).`);
+  }
 
-// Initialize display
-updateDisplay("💹 Welcome to BITPenny Exchange");
+  // Bind events
+  $("depositBtn").addEventListener("click", deposit);
+  $("buyBtn").addEventListener("click", buy);
+  $("sellBtn").addEventListener("click", sell);
+
+  // Initial draw
+  updateDisplay();
+})();
