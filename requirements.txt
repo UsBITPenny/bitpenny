@@ -1,8 +1,10 @@
 flask
 flask_cors
+gunicorn
+stripe
+authlib
+python-dotenv
 google-auth
 google-auth-oauthlib
 requests
-gunicorn
 openai
-python-dotenv 
