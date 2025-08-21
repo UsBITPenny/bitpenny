@@ -30,7 +30,6 @@ from authlib.integrations.flask_client import OAuth
 
 # ===================== App & Config =====================
 app = Flask(__name__)
-CORS(app)
 
 SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://localhost:5000").rstrip("/")
 SECURE_COOKIES = SITE_BASE_URL.startswith("https://")
