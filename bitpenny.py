@@ -7,28 +7,14 @@ import io
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from flask import Flask, jsonify, render_template, request, session, redirect, url_for, Response
-from flask_cors import CORS
-from werkzeug.security import generate_password_hash, check_password_hash
-
-# --- Load .env early ---
+# --- Load .env early (works locally; Render uses its Dashboard env vars) ---
 from dotenv import load_dotenv
 load_dotenv()
 
-# Third-party
-import stripe
-try:
-    import feedparser  # pip install feedparser
-except Exception:
-    feedparser = None
-try:
-    import pyotp  # pip install pyotp
-except Exception:
-    pyotp = None
+from flask import Flask, jsonify, render_template, request, session, redirect, url_for, Response
+from werkzeug.security import generate_password_hash, check_password_hash
 
-from authlib.integrations.flask_client import OAuth
-
-# ===================== App & Config =====================
+# ===================== App & Core Config =====================
 app = Flask(__name__)
 
 SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "http://localhost:5000").rstrip("/")
@@ -43,13 +29,47 @@ app.config.update(
 DB_PATH = os.environ.get("DATABASE_URL", "sqlite:///bitpenny.db").replace("sqlite:///", "")
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "admin-token")
 
-# Stripe
+# --- CORS: allow only our frontend(s) and carry cookies ---
+from flask_cors import CORS
+
+SITE_FRONTEND_ORIGIN = os.environ.get("SITE_FRONTEND_ORIGIN", "http://localhost:3000").rstrip("/")
+
+ALLOWED_ORIGINS = [o for o in {
+    SITE_FRONTEND_ORIGIN,
+    SITE_BASE_URL,
+    "https://bitpenny.org",
+    "https://www.bitpenny.org",
+    "http://localhost:3000",
+} if o]
+
+CORS(
+    app,
+    supports_credentials=True,          # allow cookies/session
+    resources={r"/*": {"origins": ALLOWED_ORIGINS}},
+)
+
+print("CORS allowed origins:", ALLOWED_ORIGINS)
+print("SITE_BASE_URL:", SITE_BASE_URL)
+
+# ===================== Third-party libs =====================
+import stripe
+try:
+    import feedparser  # pip install feedparser
+except Exception:
+    feedparser = None
+try:
+    import pyotp  # pip install pyotp
+except Exception:
+    pyotp = None
+
+from authlib.integrations.flask_client import OAuth
+
+# Stripe keys
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
 PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY")
 WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 
 print("GOOGLE_CLIENT_ID prefix:", (os.environ.get("GOOGLE_CLIENT_ID") or "")[:24])
-print("SITE_BASE_URL:", SITE_BASE_URL)
 
 # ===================== OAuth (Google OIDC) =====================
 oauth = OAuth(app)
@@ -112,7 +132,7 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
     """)
-    # Backfill missing columns for older DBs (SQLite ADD COLUMN is safe if not exists)
+    # Backfill columns if older DB
     try:
         cur.execute("ALTER TABLE users ADD COLUMN totp_secret TEXT")
     except sqlite3.OperationalError:
@@ -202,7 +222,7 @@ def login():
     if not row or not check_password_hash(row["password_hash"], pw):
         return jsonify({"error": "invalid_credentials"}), 401
 
-    # If 2FA enabled, require a code in a second step (simple flow)
+    # If 2FA enabled, require OTP unless provided
     if int(row["twofa_enabled"] or 0) and not data.get("otp"):
         return jsonify({"error": "otp_required"}), 401
 
@@ -315,7 +335,7 @@ def balance_self():
     con.close()
     return jsonify({"balance": int(bal)})
 
-# ===================== Portfolio Timeseries (for growth chart) =====================
+# ===================== Portfolio Timeseries (growth chart) =====================
 @app.get("/api/portfolio/timeseries")
 def portfolio_ts():
     if not current_user_id():
@@ -330,13 +350,11 @@ def portfolio_ts():
     rows = cur.fetchall()
     con.close()
 
-    points = []
-    bal = 0
-    by_day = {}
+    points, bal, by_day = [], 0, {}
     for r in rows:
         amt = int(r["amount"])
         try:
-            ts = datetime.fromisoformat(r["created_at"].replace("Z",""))
+            ts = datetime.fromisoformat(r["created_at"].replace("Z", ""))
         except Exception:
             ts = datetime.utcnow()
         day = datetime(ts.year, ts.month, ts.day)
@@ -349,7 +367,7 @@ def portfolio_ts():
         points.append({
             "time": int(cursor.replace(tzinfo=timezone.utc).timestamp()),
             "bitp": bal,
-            "usd": round(bal / 100.0, 2),  # 1 USD -> 100 BITP
+            "usd": round(bal / 100.0, 2),
         })
         cursor += timedelta(days=1)
 
@@ -408,7 +426,7 @@ _NEWS_TTL = 10 * 60  # 10 min
 def _fetch_news():
     items = []
     if not feedparser:
-        return [{"source":"News","title":"Crypto market overview","url":"https://coindesk.com/","published":utcnow_iso()}]
+        return [{"source": "News", "title": "Crypto market overview", "url": "https://coindesk.com/", "published": utcnow_iso()}]
     for src_name, url in NEWS_SOURCES:
         try:
             d = feedparser.parse(url)
@@ -432,7 +450,7 @@ def api_news():
         _NEWS_CACHE["ts"] = now
     return jsonify({"items": _NEWS_CACHE["items"]})
 
-# ===================== 2FA (TOTP) minimal APIs =====================
+# ===================== 2FA (TOTP) =====================
 @app.post("/api/2fa/setup")
 def api_2fa_setup():
     if not current_user_id():
@@ -574,7 +592,6 @@ def api_history_csv():
 MARKET = {"last": 1.00, "t0": time.time()}
 
 def _nudge_price():
-    # random walk
     MARKET["last"] = max(0.01, round(MARKET["last"] * (1 + random.uniform(-0.003, 0.003)), 4))
 
 @app.get("/api/market/ticker")
@@ -600,7 +617,6 @@ def api_trades():
 
 @app.get("/api/market/candles")
 def api_candles():
-    # simple synthetic candles
     limit = int(request.args.get("limit", 180))
     now = int(time.time())
     candles = []
@@ -610,14 +626,14 @@ def api_candles():
         o = round(base*(1+random.uniform(-0.002,0.002)),4)
         h = round(o*(1+random.uniform(0,0.004)),4)
         l = round(o*(1-random.uniform(0,0.004)),4)
-        c = round(random.choice([h,l, o*(1+random.uniform(-0.001,0.001))]),4)
+        c = round(random.choice([h, l, o*(1+random.uniform(-0.001,0.001))]),4)
         v = random.randint(5,200)
         candles.append([t, o, h, l, c, v])
         base = c
     MARKET["last"] = base
     return jsonify({"candles": candles})
 
-# ===================== Pages =====================
+# ===================== Pages (server-rendered) =====================
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -628,7 +644,6 @@ def wallet_page():
         return redirect(url_for("index"))
     return render_template("wallet.html")
 
-# --- Extra pages ---
 @app.route("/trade")
 def trade_page():
     if not current_user_id():
@@ -712,7 +727,12 @@ def deposit_success():
 def deposit_cancel():
     return "<html><body style='background:#0d0d0d;color:#e0ffe0;font-family:Segoe UI,sans-serif'><div style='display:grid;place-items:center;min-height:100vh'><div><h2>Payment canceled</h2><a href='/wallet' style='color:#00ff99'>Back to wallet</a></div></div></body></html>"
 
-# ===================== Run =====================
+# Health for Render
+@app.get("/health")
+def health():
+    return "ok", 200
+
+# ===================== Run (local dev) =====================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
